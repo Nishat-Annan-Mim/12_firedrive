@@ -1,0 +1,104 @@
+# Global health collectibles list
+health_collectibles = []
+
+def generate_health_collectibles():
+    """Generate health collectibles at random positions"""
+    global health_collectibles
+    health_collectibles = []
+    for _ in range(12):  # 12 health pickups as requested
+        x = random.uniform(-GRID_SIZE + 100, GRID_SIZE - 100)
+        z = random.uniform(-GRID_SIZE + 100, GRID_SIZE - 100)
+        # Same structure as bullet collectibles: [x, y, z, float_dir, float_speed, rotation]
+        health_collectibles.append([x, 15, z, 1, 10, 0])
+
+def draw_health_collectible(x, y, z, rotation):
+    """Draw a health collectible with purple color and cross symbol"""
+    glPushMatrix()
+    glTranslatef(x, y, z)
+    glRotatef(rotation, 0, 1, 0)
+    # Purple outer sphere
+    glColor3f(0.5, 0.0, 0.8)  # Purple color
+    quad = gluNewQuadric()
+    gluSphere(quad, 10, 12, 12)
+    # White inner cross/plus symbol for health
+    glColor3f(1.0, 1.0, 1.0)
+    # Vertical bar of cross
+    glPushMatrix()
+    glScalef(2, 8, 2)
+    glutSolidCube(1)
+    glPopMatrix()
+    # Horizontal bar of cross
+    glPushMatrix()
+    glScalef(8, 2, 2)
+    glutSolidCube(1)
+    glPopMatrix()
+    glPopMatrix()
+
+def update_health_collectibles(delta_time):
+    """Update health collectibles: float up/down, rotate, and handle collection"""
+    global health_collectibles, player_health
+    for collectible in health_collectibles[:]:
+        x, y, z, float_dir, float_speed, rotation = collectible
+        # Float animation
+        y += float_dir * float_speed * delta_time
+        if y > 25:
+            float_dir = -1
+        elif y < 5:
+            float_dir = 1
+        rotation += 90 * delta_time
+        collectible[1] = y
+        collectible[3] = float_dir
+        collectible[5] = rotation
+        
+        # Check collection
+        dx = player_pos[0] - x
+        dz = player_pos[2] - z
+        distance = math.sqrt(dx*dx + dz*dz)
+        if distance < 30:  # Same collection distance as bullets
+            health_collectibles.remove(collectible)
+            # Increase health but cap at 100
+            old_health = player_health
+            player_health = min(100, player_health + 20)  # +20 health per pickup
+            print(f"Health collected! Health: {old_health} -> {player_health}")
+
+# In the display function - draw health collectibles
+def display():
+    # ... other drawing code
+    for collectible in health_collectibles:
+        draw_health_collectible(collectible[0], collectible[1], collectible[2], collectible[5])
+    # ... rest of display function
+
+# In the idle function - update health collectibles and respawn if needed
+def idle():
+    # ... other update code
+    update_health_collectibles(delta_time)
+    
+    # Respawn health collectibles if they get too low
+    if len(health_collectibles) < 5:  # When below 5, respawn some
+        respawn_count = 12 - len(health_collectibles)  # Respawn to get back to 12 total
+        for _ in range(respawn_count):
+            x = random.uniform(-GRID_SIZE + 100, GRID_SIZE - 100)
+            z = random.uniform(-GRID_SIZE + 100, GRID_SIZE - 100)
+            health_collectibles.append([x, 15, z, 1, 10, 0])
+    # ... rest of idle function
+
+# In the HUD - display health collectible count
+def draw_hud():
+    """Draw HUD information"""
+    # ... other HUD elements
+    
+    # Health collectibles (white)
+    glColor3f(1, 1, 1)
+    glRasterPos2f(10, 660)
+    health_collectible_text = f"Health Pickups: {len(health_collectibles)}"
+    for char in health_collectible_text:
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, ord(char))
+    
+    # ... rest of HUD function
+
+# In reset_game function - generate health collectibles on game reset
+def reset_game():
+    global health_collectibles
+    # ... other reset code
+    generate_health_collectibles()
+    # ... rest of reset code
