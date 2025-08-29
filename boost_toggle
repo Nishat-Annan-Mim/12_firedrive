@@ -1,0 +1,39 @@
+# --- BOOST TOGGLE STATE ---
+boost_active = False
+shift_down = False
+w_down = False
+boost_toggle_ready = True
+
+def keyboard(key, x, y):
+    """Handle keyboard input"""
+    global camera_mode, is_jumping, jump_start_y, camera_zoom, gun_rotation
+    global shift_down, w_down, boost_active, boost_toggle_ready, cheat_mode
+    global cheat_target, auto_fire_cooldown, cheat_move_override
+    global first_person_cheat_mode, fp_cheat_target, fp_auto_fire_cooldown, fp_movement_override
+
+    keys_pressed.add(ord(key))
+
+    # Track if W or Shift is pressed for boost toggle
+    if key == b'w' or key == b'W':
+        w_down = True
+    if key == b'\x10':  # Shift key (not always reliable, see below)
+        shift_down = True
+
+    # --- BOOST TOGGLE LOGIC ---
+    if shift_down and w_down and boost_toggle_ready:
+        boost_active = not boost_active
+        boost_toggle_ready = False
+        print(f"Boost toggled: {'ON' if boost_active else 'OFF'}")
+
+    # ... rest of keyboard function
+
+def keyboard_up(key, x, y):
+    """Handle key release"""
+    global shift_down, w_down, boost_toggle_ready
+    keys_pressed.discard(ord(key))
+    if key == b'w' or key == b'W':
+        w_down = False
+        boost_toggle_ready = True
+    if key == b'\x10':
+        shift_down = False
+        boost_toggle_ready = True
