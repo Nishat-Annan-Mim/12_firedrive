@@ -1,0 +1,176 @@
+# --- TURRET CONSTANTS AND VARIABLES ---
+MAX_TURRETS = 3
+turrets = []  # [x, y, z, rotation, fire_cooldown, health]
+TURRET_SIZE = 40  # Increased for visibility
+TURRET_FIRE_RANGE = 100
+
+def spawn_turret():
+    """Spawn a turret at a random position"""
+    x = random.uniform(-GRID_SIZE+100, GRID_SIZE-100)
+    z = random.uniform(-GRID_SIZE+100, GRID_SIZE-100)
+    turrets.append([x, 0, z, 0, 0, 3])  # 3 health points
+
+def draw_turret(x, y, z, rotation):
+    """Draw a stationary turret that can rotate and fire"""
+    glPushMatrix()
+    glTranslatef(x, y, z)
+    
+    # Turret base (stationary part)
+    glColor3f(0.3, 0.3, 0.3)  # Dark gray base
+    glPushMatrix()
+    glScalef(TURRET_SIZE, 7, TURRET_SIZE)  # Low, wide base
+    glutSolidCube(1)
+    glPopMatrix()
+    
+    # Turret body (rotating part)
+    glRotatef(rotation, 0, 1, 0)  # Rotate to face player
+    glColor3f(0.8, 0.2, 0.2)  # Red turret body
+    
+    # Main gun housing
+    glPushMatrix()
+    glTranslatef(0, 14, TURRET_SIZE/2)  # Position on top of base
+    gluCylinder(gluNewQuadric(), 4, 4, 18, 12, 1)  # Gun barrel
+    glPopMatrix()
+    
+    glPopMatrix()
+
+def update_turrets(dt):
+    """Update turret behavior: aiming and shooting"""
+    global turrets, player_health
+    for t in turrets:
+        dx = player_pos[0] - t[0]
+        dz = player_pos[2] - t[2]
+        dist = math.sqrt(dx*dx + dz*dz)
+        
+        # Aim at player
+        t[3] = math.degrees(math.atan2(dx, dz))
+        
+        # Fire at player if within range
+        if dist < TURRET_FIRE_RANGE and t[4] <= 0:
+            fire_enemy_bullet(t[0], t[1] + TURRET_SIZE/2, t[2], t[3], speed=1200, damage=3)
+            t[4] = 4.0  # 4 second cooldown between shots
+        
+        # Update fire cooldown
+        if t[4] > 0:
+            t[4] -= dt
+
+# --- RESET FUNCTION WITH TURRET INITIALIZATION ---
+def reset_game():
+    global player_pos, player_rotation, gun_rotation, bullets, bullet_count
+    global camera_mode, camera_angle, camera_height, camera_zoom, is_jumping, jump_timer
+    global boost_active, shift_down, w_down, boost_toggle_ready, keys_pressed
+    global enemy_cars, human_enemies, turrets, mine_bots, player_health, enemy_bullets
+    global mountains, trees
+    global pit_holes
+    global cheat_mode, cheat_target, auto_fire_cooldown, cheat_move_override  
+    global first_person_cheat_mode, fp_cheat_target, fp_auto_fire_cooldown, fp_movement_override  
+    global score
+    global game_timer, game_over, game_over_spin_speed, game_over_message_timer  
+    global level_up, shield_active
+
+    level_up = False
+    shield_active = False
+    score = 0
+    player_pos = [0, 0, 0]
+    player_rotation = 0
+    gun_rotation = 0
+    bullets = []
+    bullet_count = MAX_BULLETS
+
+    camera_mode = 'third_person'
+    camera_angle = 0
+    camera_height = 600
+    camera_zoom = 1.0
+    is_jumping = False
+    jump_timer = 0
+
+    boost_active = False
+    shift_down = False
+    w_down = False
+    boost_toggle_ready = True
+    keys_pressed.clear()
+
+    # Reset cheat mode
+    cheat_mode = False
+    cheat_target = None
+    auto_fire_cooldown = 0
+    cheat_move_override = False
+
+    # Reset first person cheat mode
+    first_person_cheat_mode = False
+    fp_cheat_target = None
+    fp_auto_fire_cooldown = 0
+    fp_movement_override = False
+
+    game_timer = GAME_TIME_LIMIT
+    game_over = False
+    game_over_spin_speed = 0      
+    game_over_message_timer = 0   
+    generate_time_pickups()
+
+    # Spawn obstacles first
+    spawn_mountains()
+    spawn_trees()
+    
+    # Reset and spawn enemies
+    enemy_cars = []
+    for _ in range(MAX_ENEMY_CARS):
+        spawn_enemy_car()
+    
+    human_enemies = []
+    for _ in range(MAX_HUMAN_ENEMIES):
+        spawn_human_enemy()
+    
+    # TURRET RESET AND SPAWNING
+    turrets = []
+    for _ in range(MAX_TURRETS):
+        spawn_turret()
+    
+    mine_bots = []
+    for _ in range(MAX_MINE_BOTS):
+        spawn_mine_bot()
+    
+    enemy_bullets.clear()
+    player_health = 100
+
+    generate_bullet_collectibles() 
+    generate_health_collectibles()
+    spawn_pit_holes(3) 
+    print(f"Game Reset! Bullet Count: {bullet_count}")
+    print(f"Spawned {len(mountains)} mountains and {len(trees)} trees")
+    print(f"Game Reset! Bullet Count: {bullet_count}")
+    print(f"Spawned {len(mountains)} mountains and {len(trees)} trees")
+
+# In the display function - draw turrets
+def display():
+    # ... other drawing code
+    for t in turrets:
+        draw_turret(t[0], t[1], t[2], t[3])  # Position and rotation
+    # ... rest of display function
+
+# In the bullet collision detection - turret hit handling
+def update_bullets(delta_time):
+    global bullets, enemy_cars, human_enemies, turrets, mine_bots, score
+    updated_bullets = []
+    for bullet in bullets:
+        # ... other collision checks
+        
+        # Check turret hit
+        if not hit:
+            for t in turrets:
+                dx = t[0] - bullet[0]
+                dz = t[2] - bullet[2]
+                dist = math.sqrt(dx*dx + dz*dz)
+                if dist < TURRET_SIZE/2:
+                    t[5] -= 1  # Reduce turret health
+                    print(f"Turret hit! Health: {t[5]}")
+                    if t[5] <= 0:
+                        print("Turret destroyed! Respawning...")
+                        t[0] = random.uniform(-GRID_SIZE+100, GRID_SIZE-100)
+                        t[2] = random.uniform(-GRID_SIZE+100, GRID_SIZE-100)
+                        t[5] = 3  # Reset health
+                        score += 20  # +20 points for turret
+                    hit = True
+                    break
+        
+        # ... rest of bullet collision code
