@@ -1,0 +1,147 @@
+# Global score variable
+score = 0
+
+# In the update_bullets function - scoring for enemy hits
+def update_bullets(delta_time):
+    global bullets, enemy_cars, human_enemies, turrets, mine_bots, score
+    updated_bullets = []
+    for bullet in bullets:
+        # Move bullet
+        bullet[0] += bullet[3] * delta_time
+        bullet[1] += bullet[4] * delta_time
+        bullet[2] += bullet[5] * delta_time
+        
+        hit = False
+        
+        # Check enemy car hit (+10 points)
+        for ec in enemy_cars:
+            dx = ec[0] - bullet[0]
+            dz = ec[2] - bullet[2]
+            dist = math.sqrt(dx*dx + dz*dz)
+            if dist < ENEMY_CAR_SIZE/2:
+                ec[4] -= 1
+                print(f"Enemy car hit! Health: {ec[4]}")
+                if ec[4] <= 0:
+                    print("Enemy car destroyed! Respawning...")
+                    ec[0] = random.uniform(-GRID_SIZE+100, GRID_SIZE-100)
+                    ec[2] = random.uniform(-GRID_SIZE+100, GRID_SIZE-100)
+                    ec[4] = 2
+                    score += 10  # +10 points for car
+                hit = True
+                break
+        
+        # Check human enemy hit (+15 points)
+        if not hit:
+            for he in human_enemies:
+                dx = he[0] - bullet[0]
+                dz = he[2] - bullet[2]
+                dist = math.sqrt(dx*dx + dz*dz)
+                if dist < HUMAN_SIZE/2:
+                    print("Human enemy hit! Respawning...")
+                    he[0] = random.uniform(-GRID_SIZE+100, GRID_SIZE-100)
+                    he[2] = random.uniform(-GRID_SIZE+100, GRID_SIZE-100)
+                    score += 15  # +15 points for human
+                    hit = True
+                    break
+        
+        # Check turret hit (+20 points)
+        if not hit:
+            for t in turrets:
+                dx = t[0] - bullet[0]
+                dz = t[2] - bullet[2]
+                dist = math.sqrt(dx*dx + dz*dz)
+                if dist < TURRET_SIZE/2:
+                    t[5] -= 1
+                    print(f"Turret hit! Health: {t[5]}")
+                    if t[5] <= 0:
+                        print("Turret destroyed! Respawning...")
+                        t[0] = random.uniform(-GRID_SIZE+100, GRID_SIZE-100)
+                        t[2] = random.uniform(-GRID_SIZE+100, GRID_SIZE-100)
+                        t[5] = 3
+                        score += 20  # +20 points for turret
+                    hit = True
+                    break
+        
+        # Check mine bot hit (+25 points)
+        if not hit:
+            for mb in mine_bots:
+                dx = mb[0] - bullet[0]
+                dz = mb[2] - bullet[2]
+                dist = math.sqrt(dx*dx + dz*dz)
+                if dist < MINE_SIZE:
+                    print("Mine bot destroyed! Respawning...")
+                    mb[0] = random.uniform(-GRID_SIZE+100, GRID_SIZE-100)
+                    mb[2] = random.uniform(-GRID_SIZE+100, GRID_SIZE-100)
+                    score += 25  # +25 points for minebot
+                    hit = True
+                    break
+        
+        if not hit and abs(bullet[0]) < GRID_SIZE and abs(bullet[2]) < GRID_SIZE:
+            updated_bullets.append(bullet)
+    
+    bullets = updated_bullets
+
+# In update_enemy_cars function - scoring for shield kills
+def update_enemy_cars(dt):
+    global enemy_cars, player_health, score
+    for ec in enemy_cars:
+        dx = player_pos[0] - ec[0]
+        dz = player_pos[2] - ec[2]
+        dist = math.sqrt(dx*dx + dz*dz)
+        if shield_active and dist < SHIELD_RADIUS + ENEMY_CAR_SIZE/2:
+            # Respawn enemy car
+            ec[0] = random.uniform(-GRID_SIZE+100, GRID_SIZE-100)
+            ec[2] = random.uniform(-GRID_SIZE+100, GRID_SIZE-100)
+            ec[4] = 2
+            score += 10  # +10 points for car
+            print("Enemy car destroyed by shield!")
+            continue
+        # ... rest of function
+
+# In update_human_enemies function - scoring for shield kills
+def update_human_enemies(dt):
+    global human_enemies, player_health, score
+    for he in human_enemies:
+        dx = player_pos[0] - he[0]
+        dz = player_pos[2] - he[2]
+        dist = math.sqrt(dx*dx + dz*dz)
+        # Shield collision
+        if shield_active and dist < SHIELD_RADIUS + HUMAN_SIZE/2:
+            he[0] = random.uniform(-GRID_SIZE+100, GRID_SIZE-100)
+            he[2] = random.uniform(-GRID_SIZE+100, GRID_SIZE-100)
+            score += 15  # +15 points for human
+            print("Human enemy destroyed by shield!")
+            continue
+        # ... rest of function
+
+# In the HUD drawing function - display score
+def draw_hud():
+    """Draw HUD information"""
+    # ... other HUD elements
+    
+    # Score (white, at the top)
+    glColor3f(1, 1, 1)
+    glRasterPos2f(10, 790)
+    score_text = f"Score: {score}"
+    for char in score_text:
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, ord(char))
+    
+    # ... rest of function
+
+# In the game over display
+def draw_game_over_message():
+    """Draw the game over message in the center of the screen"""
+    if not game_over:
+        return
+        
+    # ... other game over elements
+    
+    # Score display
+    glColor3f(1.0, 1.0, 1.0)  # White
+    score_text = f"FINAL SCORE: {score}"
+    score_width = len(score_text) * 10
+    glRasterPos2f(500 - score_width // 2, 400)
+    for char in score_text:
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, ord(char))
+    
+    # ... rest of function
