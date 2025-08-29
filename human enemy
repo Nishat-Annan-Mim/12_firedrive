@@ -1,0 +1,138 @@
+# Human enemy constants and variables
+MAX_HUMAN_ENEMIES = 6
+human_enemies = []  # [x, y, z, touch_timer, fire_cooldown, rotation]
+HUMAN_SIZE = 60  # Increased for visibility
+
+def spawn_human_enemy():
+    """Spawn a human enemy at a random position"""
+    x = random.uniform(-GRID_SIZE+100, GRID_SIZE-100)
+    z = random.uniform(-GRID_SIZE+100, GRID_SIZE-100)
+    # Now includes fire_cooldown (index 4) and rotation (index 5)
+    human_enemies.append([x, 0, z, 0, 0, 0])
+
+def draw_human_enemy(x, y, z, rotation=0):
+    """Draw a human enemy with weapon"""
+    glPushMatrix()
+    glTranslatef(x, y, z)
+    glRotatef(rotation, 0, 1, 0)  # Rotate to face player
+    
+    # Head
+    glColor3f(1, 0.8, 0.6)  # Skin color
+    glPushMatrix()
+    glTranslatef(0, HUMAN_SIZE - 5, 0)  # Position head at top
+    quad = gluNewQuadric()
+    gluSphere(quad, 8, 12, 12)
+    glPopMatrix()
+    
+    # Body (torso)
+    glColor3f(0.2, 0.2, 0.8)  # Blue shirt
+    glPushMatrix()
+    glTranslatef(0, HUMAN_SIZE/2, 0)  # Center the body
+    glScalef(12, HUMAN_SIZE/2, 8)  # Width, height, depth
+    glutSolidCube(1)
+    glPopMatrix()
+    
+    # Arms
+    glColor3f(1, 0.8, 0.6)  # Skin color for arms
+    for dx in [-12, 12]:  # Left and right arms
+        glPushMatrix()
+        glTranslatef(dx, HUMAN_SIZE * 0.7, 0)  # Position arms at shoulder level
+        glScalef(3, 15, 3)  # Thin arms
+        glutSolidCube(1)
+        glPopMatrix()
+    
+    # Legs
+    glColor3f(0.1, 0.1, 0.1)  # Dark pants
+    for dx in [-5, 5]:  # Left and right legs
+        glPushMatrix()
+        glTranslatef(dx, HUMAN_SIZE/4, 0)  # Position legs properly
+        glScalef(4, HUMAN_SIZE/2, 4)  # Leg dimensions
+        glutSolidCube(1)
+        glPopMatrix()
+    
+    # Weapon (rifle) - now points forward
+    glColor3f(0.3, 0.3, 0.3)  # Dark gray weapon
+    glPushMatrix()
+    glTranslatef(8, HUMAN_SIZE * 0.6, 12)  # Hold weapon pointing forward
+    glRotatef(90, 0, 1, 0)  # Point weapon forward
+    glScalef(2, 2, 25)  # Long rifle
+    glutSolidCube(1)
+    glPopMatrix()
+    
+    # Muzzle flash effect (when firing)
+    glColor3f(1.0, 0.8, 0.0)
+    glPushMatrix()
+    glTranslatef(8, HUMAN_SIZE * 0.6, 25)  # At weapon tip
+    quad = gluNewQuadric()
+    gluSphere(quad, 2, 8, 8)
+    glPopMatrix()
+    
+    glPopMatrix()
+
+def update_human_enemies(dt):
+    """Update human enemy behavior: movement, shooting, and collision"""
+    global human_enemies, player_health, score
+    for he in human_enemies:
+        dx = player_pos[0] - he[0]
+        dz = player_pos[2] - he[2]
+        dist = math.sqrt(dx*dx + dz*dz)
+        
+        # Shield collision
+        if shield_active and dist < SHIELD_RADIUS + HUMAN_SIZE/2:
+            he[0] = random.uniform(-GRID_SIZE+100, GRID_SIZE-100)
+            he[2] = random.uniform(-GRID_SIZE+100, GRID_SIZE-100)
+            score += 15
+            print("Human enemy destroyed by shield!")
+            continue
+        
+        # Calculate rotation to face player
+        if dist > 1:
+            he[5] = math.degrees(math.atan2(dx, dz))  # Update rotation
+            
+            # Move towards player (but slower than before to make them more tactical)
+            angle = math.atan2(dx, dz)
+            speed = 12  # Reduced speed since they can now shoot
+            he[0] += math.sin(angle) * speed * dt
+            he[2] += math.cos(angle) * speed * dt
+        
+        # Fire at player if within range
+        if dist < HUMAN_FIRE_RANGE and he[4] <= 0:  # 400 unit firing range
+            fire_enemy_bullet(he[0], he[1] + HUMAN_SIZE/2, he[2], he[5], speed=1250, damage=2)
+            he[4] = 3  # 1.5 second cooldown between shots
+            print("Human enemy fired!")
+        
+        # Update fire cooldown
+        if he[4] > 0:
+            he[4] -= dt
+        
+        # Touch damage (reduced since they can now shoot)
+        if dist < HUMAN_SIZE + CAR_SIZE:
+            if not (ord('W') in keys_pressed or ord('w') in keys_pressed or
+                    ord('A') in keys_pressed or ord('a') in keys_pressed or
+                    ord('S') in keys_pressed or ord('s') in keys_pressed or
+                    ord('D') in keys_pressed or ord('d') in keys_pressed):
+                he[3] += dt
+                if he[3] > 4:  # Increased time before touch damage
+                    if not shield_active:
+                        player_health -= 3  # Reduced touch damage since they can shoot
+                    he[3] = 0
+            else:
+                he[3] = 0
+        else:
+            he[3] = 0
+
+# In the display function - draw human enemies
+def display():
+    # ... other drawing code
+    for he in human_enemies:
+        draw_human_enemy(he[0], he[1], he[2], he[5])  # Now includes rotation
+    # ... rest of display function
+
+# In reset_game function - spawn human enemies
+def reset_game():
+    global human_enemies
+    # ... other reset code
+    human_enemies = []
+    for _ in range(MAX_HUMAN_ENEMIES):
+        spawn_human_enemy()
+    # ... rest of reset code
