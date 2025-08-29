@@ -1,0 +1,28 @@
+def draw_mountain(x, y, z, height, base_radius):
+    """Draw a mountain with a cone shape and snow cap"""
+    glPushMatrix()
+    glTranslatef(x, y, z)
+    quad = gluNewQuadric()
+
+    # Main cone (mountain body)
+    glPushMatrix()
+    glRotatef(-90, 1, 0, 0)  # Rotate to point upward
+    glColor3f(0.5, 0.4, 0.3)  # Brownish mountain color
+    gluCylinder(quad, base_radius, 0.1, height, 32, 8)  # Cone shape
+    glPopMatrix()
+
+    # Snow cap (cone at peak)
+    glPushMatrix()
+    glTranslatef(0, height, 0)  # Position at top of mountain
+    glRotatef(-90, 1, 0, 0)
+    glColor3f(1.0, 1.0, 1.0)  # White snow color
+    gluCylinder(quad, base_radius * 0.25, 0.0, base_radius * 0.5, 24, 4)  # Snow cap
+    glPopMatrix()
+
+    glPopMatrix()
+
+
+def display():
+
+    for mountain in mountains:
+        draw_mountain(mountain[0], mountain[1], mountain[2], mountain[3], mountain[4])
